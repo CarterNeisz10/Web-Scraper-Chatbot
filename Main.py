@@ -1,49 +1,68 @@
+print("MAIN STARTING")
+
+print("Importing response...")
+
 from response import (
     process_request,
-    embed_question,
     generate_found_response,
     generate_clarification,
-    generate_not_found_response,
-    add_clarification
+    generate_not_found_response
 )
 
-from brain import search_website
+print("Response imported")
+
+print("Importing brain...")
+
+from brain import (
+    search_website,
+    match_candidate
+)
+
+print("Brain imported")
 
 
 def main():
-
-    # --------------------------------
-    # Get original request
-    # --------------------------------
 
     user_input = input(
         "What would you like to know? "
     )
 
-    request = process_request(user_input)
+    request = process_request(
+        user_input
+    )
 
     if request is None:
-        print("Please include a valid URL.")
+        print(
+            "Please include a valid URL."
+        )
         return
 
     url = request["url"]
     question = request["question"]
+
     question_embedding = request[
         "question_embedding"
     ]
 
+
     # --------------------------------
-    # Conversation/search loop
+    # Initial website search
+    # --------------------------------
+
+    result = search_website(
+        url,
+        question_embedding
+    )
+
+
+    # --------------------------------
+    # Conversation loop
     # --------------------------------
 
     while True:
 
-        result = search_website(
-            url,
-            question_embedding
-        )
-
         status = result["status"]
+
 
         # --------------------------------
         # FOUND
@@ -56,14 +75,22 @@ def main():
                 result
             )
 
-            print(f"\n{answer}")
+            print(
+                f"\n{answer}"
+            )
+
             break
+
 
         # --------------------------------
         # NEEDS CLARIFICATION
         # --------------------------------
 
-        elif status == "needs_clarification":
+        elif (
+            status
+            ==
+            "needs_clarification"
+        ):
 
             clarification_question = (
                 generate_clarification(
@@ -73,29 +100,27 @@ def main():
             )
 
             print(
-                f"\n{clarification_question}"
+                f"\n"
+                f"{clarification_question}"
             )
 
-            clarification_answer = input("> ")
-
-            # Rewrite the question using the
-            # user's new information
-            question = add_clarification(
-                question,
-                clarification_answer
+            clarification_answer = input(
+                "> "
             )
 
-            print(
-                f"\nUpdated question: {question}"
+
+            # IMPORTANT:
+            #
+            # We do NOT search the website again.
+            #
+            # We only compare the clarification
+            # against candidates already found.
+
+            result = match_candidate(
+                clarification_answer,
+                result["candidates"]
             )
 
-            # Create a NEW embedding from the
-            # more specific question
-            question_embedding = embed_question(
-                question
-            )
-
-            # Loop runs brain again
 
         # --------------------------------
         # NOT FOUND
@@ -103,22 +128,29 @@ def main():
 
         elif status == "not_found":
 
-            answer = generate_not_found_response(
-                question
+            answer = (
+                generate_not_found_response(
+                    question
+                )
             )
 
-            print(f"\n{answer}")
+            print(
+                f"\n{answer}"
+            )
+
             break
 
+
         # --------------------------------
-        # Unexpected result
+        # Unexpected
         # --------------------------------
 
         else:
+
             print(
-                "\nSomething went wrong while "
-                "processing the request."
+                "\nSomething went wrong."
             )
+
             break
 
 

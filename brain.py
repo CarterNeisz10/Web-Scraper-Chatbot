@@ -1,4 +1,5 @@
 import heapq
+import re
 
 from sentence_transformers import SentenceTransformer, util
 from scraper import scrape_website
@@ -14,168 +15,35 @@ embedding_model = SentenceTransformer(
 
 
 # --------------------------------------------------
-# Settings
+# Search settings
 # --------------------------------------------------
 
-CONTENT_THRESHOLD = 0.55
 LINK_THRESHOLD = 0.40
-
-# How far ahead the best candidate must be before
-# we consider it clearly better than alternatives.
-ANSWER_MARGIN = 0.08
-
 MAX_PAGES = 10
-
-# Number of evidence candidates remembered.
-MAX_CANDIDATES = 10
-
-
-# --------------------------------------------------
-# Text processing
-# --------------------------------------------------
-
-def split_text(text, chunk_size=100):
-    """
-    Splits page text into chunks used as potential
-    answer evidence.
-    """
-    words = text.split()
-    chunks = []
-
-    for i in range(0, len(words), chunk_size):
-
-        chunk = " ".join(
-            words[i:i + chunk_size]
-        )
-
-        if chunk:
-            chunks.append(chunk)
-
-    return chunks
-
-
-# --------------------------------------------------
-# Evidence candidates
-# --------------------------------------------------
-
-def find_content_candidates(
-    question_embedding,
-    page_text,
-    page_url
-):
-    """
-    Scores every text chunk on the page and returns
-    chunks that are sufficiently related to the
-    user's question.
-    """
-    chunks = split_text(page_text)
-
-    if not chunks:
-        return []
-
-    chunk_embeddings = embedding_model.encode(
-        chunks
-    )
-
-    scores = util.cos_sim(
-        question_embedding,
-        chunk_embeddings
-    )[0]
-
-    candidates = []
-
-    for index, chunk in enumerate(chunks):
-
-        score = scores[index].item()
-
-        if score >= CONTENT_THRESHOLD:
-
-            candidates.append({
-                "text": chunk,
-                "source_url": page_url,
-                "similarity": score
-            })
-
-    candidates.sort(
-        key=lambda candidate:
-        candidate["similarity"],
-        reverse=True
-    )
-
-    return candidates
-
-
-def add_candidates(
-    all_candidates,
-    new_candidates
-):
-    """
-    Adds newly discovered evidence while avoiding
-    duplicate text.
-    """
-    existing_text = {
-        candidate["text"]
-        for candidate in all_candidates
-    }
-
-    for candidate in new_candidates:
-
-        if candidate["text"] not in existing_text:
-
-            all_candidates.append(
-                candidate
-            )
-
-            existing_text.add(
-                candidate["text"]
-            )
-
-    all_candidates.sort(
-        key=lambda candidate:
-        candidate["similarity"],
-        reverse=True
-    )
-
-    return all_candidates[
-        :MAX_CANDIDATES
-    ]
 
 
 # --------------------------------------------------
 # Link scoring
 # --------------------------------------------------
 
-def find_relevant_links(
+def score_links(
     question_embedding,
     links,
     visited_urls
 ):
     """
-    Scores links against the user's question.
+    Scores links for navigation.
+
+    Similarity is used to decide WHERE to search,
+    not which answer candidate the user means.
     """
-    usable_links = []
 
-    seen_urls = set()
-
-    for link in links:
-
-        text = link["text"].strip()
-        url = link["url"]
-
-        if not text:
-            continue
-
-        if url in visited_urls:
-            continue
-
-        # Avoid putting the same URL into this
-        # result several times.
-        if url in seen_urls:
-            continue
-
-        seen_urls.add(url)
-
-        usable_links.append(link)
+    usable_links = [
+        link
+        for link in links
+        if link["text"].strip()
+        and link["url"] not in visited_urls
+    ]
 
     if not usable_links:
         return []
@@ -194,154 +62,548 @@ def find_relevant_links(
         link_embeddings
     )[0]
 
-    relevant_links = []
+    scored_links = []
 
     for index, link in enumerate(
         usable_links
     ):
 
-        score = scores[index].item()
+        scored_links.append({
+            "text":
+                link["text"],
 
-        if score >= LINK_THRESHOLD:
+            "url":
+                link["url"],
 
-            relevant_links.append({
-                "text": link["text"],
-                "url": link["url"],
-                "similarity": score
-            })
+            "similarity":
+                scores[index].item()
+        })
 
-    relevant_links.sort(
+    scored_links.sort(
         key=lambda link:
         link["similarity"],
         reverse=True
     )
 
-    return relevant_links
+    return scored_links
 
 
 # --------------------------------------------------
-# Candidate decision
+# Remove duplicate links
 # --------------------------------------------------
 
-def evaluate_candidates(candidates):
+def remove_duplicate_links(links):
+
+    unique_links = []
+    seen = set()
+
+    for link in links:
+
+        key = (
+            link["text"]
+            .strip()
+            .lower(),
+
+            link["url"]
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        unique_links.append(
+            link
+        )
+
+    return unique_links
+
+
+# --------------------------------------------------
+# Detect answer-bearing links
+# --------------------------------------------------
+
+def contains_answer_value(text):
     """
-    Examines the evidence gathered during the search.
+    Detects links containing concrete values.
 
-    Returns:
+    Examples:
 
-        found
-        needs_clarification
-        not_found
+        $699
+        15%
+        24 hours
+        256 GB
+        3 years
+
+    No company/product names are hardcoded.
+    """
+
+    patterns = [
+
+        # Currency
+        r"[$€£¥]\s*[\d,.]+",
+
+        # Percentage
+        r"\b\d+(?:\.\d+)?\s*%",
+
+        # Number + unit/word
+        r"\b\d+(?:\.\d+)?\s+"
+        r"[A-Za-z]+"
+    ]
+
+    for pattern in patterns:
+
+        if re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        ):
+            return True
+
+    return False
+
+
+# --------------------------------------------------
+# Structural fingerprint
+# --------------------------------------------------
+
+def get_link_structure(text):
+    """
+    Creates a rough structural fingerprint.
+
+    The actual words and numbers are removed so
+    repeated answer-card patterns can be detected.
+
+    Example:
+
+        Product A ... Buy from $699 Buy
+        Product B ... Buy from $799 Buy
+
+    should produce similar fingerprints.
+    """
+
+    structure = text.lower()
+
+    # Replace currency values
+    structure = re.sub(
+        r"[$€£¥]\s*[\d,.]+(?:\s*[–-]\s*[$€£¥]?\s*[\d,.]+)?",
+        " VALUE ",
+        structure
+    )
+
+    # Replace other numbers
+    structure = re.sub(
+        r"\d+(?:\.\d+)?",
+        " NUMBER ",
+        structure
+    )
+
+    # Remove words that are likely unique names.
+    # We preserve the later repeated action/value
+    # structure by looking at the end of the text.
+    words = structure.split()
+
+    if len(words) > 12:
+        words = words[-12:]
+
+    structure = " ".join(
+        words
+    )
+
+    # Normalize whitespace
+    structure = re.sub(
+        r"\s+",
+        " ",
+        structure
+    ).strip()
+
+    return structure
+
+
+# --------------------------------------------------
+# Structure similarity
+# --------------------------------------------------
+
+def structure_similarity(
+    structure_a,
+    structure_b
+):
+    """
+    Simple word-overlap comparison between two
+    structural fingerprints.
+    """
+
+    words_a = set(
+        structure_a.split()
+    )
+
+    words_b = set(
+        structure_b.split()
+    )
+
+    if not words_a or not words_b:
+        return 0.0
+
+    intersection = (
+        words_a.intersection(
+            words_b
+        )
+    )
+
+    union = (
+        words_a.union(
+            words_b
+        )
+    )
+
+    return (
+        len(intersection)
+        /
+        len(union)
+    )
+
+
+# --------------------------------------------------
+# Find answer-bearing links
+# --------------------------------------------------
+
+def get_answer_links(scored_links):
+    """
+    Gets every link containing concrete answer-like
+    information.
+
+    IMPORTANT:
+
+    There is NO semantic candidate threshold here.
+    """
+
+    answer_links = []
+
+    for link in scored_links:
+
+        if contains_answer_value(
+            link["text"]
+        ):
+
+            candidate = dict(link)
+
+            candidate["structure"] = (
+                get_link_structure(
+                    link["text"]
+                )
+            )
+
+            answer_links.append(
+                candidate
+            )
+
+    return answer_links
+
+
+# --------------------------------------------------
+# Find repeated candidate group
+# --------------------------------------------------
+
+def find_candidate_group(
+    scored_links
+):
+    """
+    Finds the largest group of answer-bearing links
+    sharing a repeated page structure.
+
+    This helps separate a repeated set of actual
+    answer cards from one-off promotional links.
+
+    No product/company names are hardcoded.
+    """
+
+    answer_links = get_answer_links(
+        scored_links
+    )
+
+    if len(answer_links) < 2:
+        return []
+
+    best_group = []
+
+    for base_link in answer_links:
+
+        current_group = []
+
+        base_structure = (
+            base_link["structure"]
+        )
+
+        for other_link in answer_links:
+
+            similarity = (
+                structure_similarity(
+                    base_structure,
+                    other_link[
+                        "structure"
+                    ]
+                )
+            )
+
+            if similarity >= 0.45:
+
+                current_group.append(
+                    other_link
+                )
+
+        if (
+            len(current_group)
+            >
+            len(best_group)
+        ):
+            best_group = current_group
+
+    # We require multiple links because we're
+    # specifically looking for a repeated candidate
+    # pattern on the page.
+    if len(best_group) < 2:
+        return []
+
+    # Remove internal diagnostic field before
+    # returning candidates.
+    candidates = []
+
+    for link in best_group:
+
+        candidates.append({
+            "name":
+                clean_candidate_name(
+                    link["text"]
+                ),
+
+            "text":
+                link["text"],
+
+            "evidence":
+                link["text"],
+
+            "url":
+                link["url"],
+
+            "source_url":
+                link["url"],
+
+            "similarity":
+                link["similarity"]
+        })
+
+    return candidates
+
+
+# --------------------------------------------------
+# Clean candidate name
+# --------------------------------------------------
+
+def clean_candidate_name(text):
+    """
+    Attempts to remove repeated action/value text
+    from a candidate card while keeping its name.
+
+    This is generic and does not know any specific
+    product names.
+    """
+
+    clean_text = re.sub(
+        r"\s+",
+        " ",
+        text
+    ).strip()
+
+    # Cut before common value/action sections.
+    # These are interface/action patterns rather
+    # than company or product names.
+    separators = [
+        r"take a closer look",
+        r"buy from",
+        r"from\s*[$€£¥]",
+        r"[$€£¥]\s*[\d,.]+"
+    ]
+
+    earliest_position = None
+
+    for separator in separators:
+
+        match = re.search(
+            separator,
+            clean_text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            if (
+                earliest_position is None
+                or
+                match.start()
+                < earliest_position
+            ):
+                earliest_position = (
+                    match.start()
+                )
+
+    if earliest_position is not None:
+
+        name = clean_text[
+            :earliest_position
+        ].strip()
+
+        if name:
+            return name
+
+    return clean_text
+
+
+# --------------------------------------------------
+# Match clarification against candidates
+# --------------------------------------------------
+
+def match_candidate(
+    clarification,
+    candidates
+):
+    """
+    After the user clarifies, compare that
+    clarification ONLY against the candidates
+    already discovered.
+
+    No more website crawling occurs.
     """
 
     if not candidates:
 
         return {
-            "status": "not_found"
+            "status":
+                "not_found"
         }
 
-    best = candidates[0]
-
-    # Only one viable answer candidate exists.
-    if len(candidates) == 1:
-
-        return {
-            "status": "found",
-            "evidence": best["text"],
-            "source_url":
-                best["source_url"],
-            "similarity":
-                best["similarity"]
-        }
-
-    second_best = candidates[1]
-
-    margin = (
-        best["similarity"]
-        - second_best["similarity"]
+    clarification_embedding = (
+        embedding_model.encode(
+            clarification
+        )
     )
 
-    # One candidate clearly dominates.
-    if margin >= ANSWER_MARGIN:
+    candidate_names = [
+        candidate["name"]
+        for candidate in candidates
+    ]
 
-        return {
-            "status": "found",
-            "evidence": best["text"],
-            "source_url":
-                best["source_url"],
-            "similarity":
-                best["similarity"]
-        }
+    candidate_embeddings = (
+        embedding_model.encode(
+            candidate_names
+        )
+    )
 
-    # Several candidates are similarly plausible.
+    scores = util.cos_sim(
+        clarification_embedding,
+        candidate_embeddings
+    )[0]
+
+    best_index = (
+        scores.argmax().item()
+    )
+
+    best_score = (
+        scores[best_index].item()
+    )
+
+    best_candidate = (
+        candidates[best_index]
+    )
+
+    print(
+        "\nClarification matches:"
+    )
+
+    matches = []
+
+    for index, candidate in enumerate(
+        candidates
+    ):
+
+        matches.append(
+            (
+                candidate["name"],
+                scores[index].item()
+            )
+        )
+
+    matches.sort(
+        key=lambda item:
+        item[1],
+        reverse=True
+    )
+
+    for name, score in matches:
+
+        print(
+            f"  {name} "
+            f"({score:.3f})"
+        )
+
+    print(
+        "\nSelected candidate:"
+    )
+
+    print(
+        f"  {best_candidate['name']}"
+    )
+
     return {
         "status":
-            "needs_clarification",
+            "found",
 
-        "reason":
-            "multiple relevant answers were found",
+        "candidate":
+            best_candidate["name"],
 
-        "options":
-            candidates[:5]
+        "evidence":
+            best_candidate["evidence"],
+
+        "source_url":
+            best_candidate["source_url"],
+
+        "similarity":
+            best_score
     }
 
 
 # --------------------------------------------------
-# Main search
+# Main website search
 # --------------------------------------------------
 
 def search_website(
     starting_url,
     question_embedding
 ):
-    """
-    Best-First Search.
-
-    Rather than accepting the first relevant chunk,
-    evidence is collected while the website is
-    searched.
-
-    Final possibilities:
-
-        found
-        needs_clarification
-        not_found
-    """
 
     visited_urls = set()
-
-    queued_urls = {
-        starting_url
-    }
-
     pages_to_visit = []
-
-    all_candidates = []
 
     heapq.heappush(
         pages_to_visit,
-        (-1.0, starting_url)
+        (
+            -1.0,
+            starting_url
+        )
     )
 
     pages_visited = 0
 
-    # --------------------------------
-    # Search
-    # --------------------------------
 
     while (
         pages_to_visit
-        and pages_visited < MAX_PAGES
+        and
+        pages_visited < MAX_PAGES
     ):
 
         negative_score, current_url = (
             heapq.heappop(
                 pages_to_visit
             )
-        )
-
-        queued_urls.discard(
-            current_url
         )
 
         if current_url in visited_urls:
@@ -357,8 +619,9 @@ def search_website(
             f"\nVisiting: {current_url}"
         )
 
+
         # --------------------------------
-        # Scrape
+        # Scrape page
         # --------------------------------
 
         page = scrape_website(
@@ -368,127 +631,173 @@ def search_website(
         if page is None:
 
             print(
-                "Scraper could not retrieve page."
+                "Scraper could not "
+                "retrieve page."
             )
 
             continue
 
+
         # --------------------------------
-        # Gather evidence
+        # Score ALL links
         # --------------------------------
 
-        page_candidates = (
-            find_content_candidates(
-                question_embedding,
-                page["text"],
-                page["url"]
+        scored_links = score_links(
+            question_embedding,
+            page["links"],
+            visited_urls
+        )
+
+        scored_links = (
+            remove_duplicate_links(
+                scored_links
             )
         )
 
-        if page_candidates:
-
-            print(
-                "Best content similarity: "
-                f"{page_candidates[0]['similarity']:.3f}"
-            )
-
-            all_candidates = add_candidates(
-                all_candidates,
-                page_candidates
-            )
-
-        else:
-
-            print(
-                "No strong content candidate "
-                "on this page."
-            )
 
         # --------------------------------
-        # Find navigation options
+        # Look for candidate group
         # --------------------------------
 
-        relevant_links = (
-            find_relevant_links(
-                question_embedding,
-                page["links"],
-                visited_urls
-            )
+        candidates = find_candidate_group(
+            scored_links
         )
 
-        if relevant_links:
 
-            print("Promising links:")
+        # --------------------------------
+        # CANDIDATES FOUND -> STOP
+        # --------------------------------
 
-            for link in relevant_links[:5]:
+        if candidates:
+
+            print(
+                "\n=============================="
+            )
+
+            print(
+                "ANSWER CANDIDATES FOUND"
+            )
+
+            print(
+                "STOPPING WEBSITE SEARCH"
+            )
+
+            print(
+                "=============================="
+            )
+
+            for candidate in candidates:
 
                 print(
-                    f"  {link['text']} "
-                    f"({link['similarity']:.3f})"
+                    f"\n"
+                    f"{candidate['name']}"
                 )
 
-        else:
+                print(
+                    f"  Evidence: "
+                    f"{candidate['evidence']}"
+                )
 
-            print(
-                "No sufficiently relevant "
-                "links on this page."
-            )
+            # STOP. We do not add any more links
+            # to the queue and do not crawl again.
+
+            if len(candidates) == 1:
+
+                candidate = candidates[0]
+
+                return {
+                    "status":
+                        "found",
+
+                    "candidate":
+                        candidate["name"],
+
+                    "evidence":
+                        candidate["evidence"],
+
+                    "source_url":
+                        candidate["source_url"],
+
+                    "similarity":
+                        candidate["similarity"]
+                }
+
+            return {
+                "status":
+                    "needs_clarification",
+
+                "reason":
+                    "multiple_answer_candidates",
+
+                "candidates":
+                    candidates,
+
+                "options":
+                    candidates
+            }
+
 
         # --------------------------------
-        # Queue links
+        # No candidates -> navigate
+        # --------------------------------
+
+        relevant_links = [
+            link
+            for link in scored_links
+            if link["similarity"]
+            >= LINK_THRESHOLD
+        ]
+
+        print(
+            "\nNo answer candidates."
+        )
+
+        print(
+            "Best navigation links:"
+        )
+
+        for link in relevant_links[:5]:
+
+            print(
+                f"  {link['text']} "
+                f"({link['similarity']:.3f})"
+            )
+
+
+        # --------------------------------
+        # Add navigation links
         # --------------------------------
 
         for link in relevant_links:
 
-            url = link["url"]
+            if (
+                link["url"]
+                not in visited_urls
+            ):
 
-            if url in visited_urls:
-                continue
+                heapq.heappush(
+                    pages_to_visit,
+                    (
+                        -link[
+                            "similarity"
+                        ],
 
-            if url in queued_urls:
-                continue
-
-            heapq.heappush(
-                pages_to_visit,
-                (
-                    -link["similarity"],
-                    url
+                        link[
+                            "url"
+                        ]
+                    )
                 )
-            )
 
-            queued_urls.add(url)
 
-    # --------------------------------
-    # Search finished
-    # --------------------------------
+    # --------------------------------------------------
+    # Nothing found
+    # --------------------------------------------------
 
     print(
-        "\nEvaluating gathered evidence..."
+        "\nNo answer candidates found."
     )
 
-    if all_candidates:
-
-        print("\nTop candidates:")
-
-        for candidate in all_candidates[:5]:
-
-            preview = (
-                candidate["text"][:80]
-                .replace("\n", " ")
-            )
-
-            print(
-                f"  {candidate['similarity']:.3f} "
-                f"- {preview}..."
-            )
-
-    result = evaluate_candidates(
-        all_candidates
-    )
-
-    print(
-        f"\nBrain decision: "
-        f"{result['status']}"
-    )
-
-    return result
+    return {
+        "status":
+            "not_found"
+    }
