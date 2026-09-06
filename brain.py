@@ -345,7 +345,7 @@ def find_candidate_group(
                 )
             )
 
-            if similarity >= 0.45:
+            if similarity >= 0.40:
 
                 current_group.append(
                     other_link

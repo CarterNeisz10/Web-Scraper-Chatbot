@@ -4,16 +4,14 @@ from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 
-# --------------------------------------------------
+# --------------------------------
 # Models
-# --------------------------------------------------
+# --------------------------------
 
-# Used ONLY for creating semantic vectors
 embedding_model = SentenceTransformer(
     "all-MiniLM-L6-v2"
 )
 
-# Used ONLY for generating user-facing language
 GENERATION_MODEL = "google/flan-t5-base"
 
 response_tokenizer = AutoTokenizer.from_pretrained(
@@ -25,46 +23,50 @@ response_model = AutoModelForSeq2SeqLM.from_pretrained(
 )
 
 
-# --------------------------------------------------
-# User request processing
-# --------------------------------------------------
+# --------------------------------
+# Request processing
+# --------------------------------
 
 def extract_url(user_input):
-    """
-    Extracts the URL from the user's input.
-    """
+
     url_pattern = r'https?://[^\s]+'
-    match = re.search(url_pattern, user_input)
+
+    match = re.search(
+        url_pattern,
+        user_input
+    )
 
     if match:
-        return match.group(0).rstrip(".,!?")
+        return match.group(0).rstrip(
+            ".,!?"
+        )
 
     return None
 
 
-def extract_question(user_input, url):
-    """
-    Removes the URL before any embedding occurs.
-    """
-    return user_input.replace(url, "").strip()
+def extract_question(
+    user_input,
+    url
+):
+
+    return user_input.replace(
+        url,
+        ""
+    ).strip()
 
 
 def embed_question(question):
-    """
-    Converts user-provided question context into
-    a semantic vector.
 
-    No generative model is involved.
-    """
-    return embedding_model.encode(question)
+    return embedding_model.encode(
+        question
+    )
 
 
 def process_request(user_input):
-    """
-    Extracts the website URL and embeds ONLY
-    the user's question.
-    """
-    url = extract_url(user_input)
+
+    url = extract_url(
+        user_input
+    )
 
     if not url:
         return None
@@ -85,18 +87,15 @@ def process_request(user_input):
     }
 
 
+# --------------------------------
+# Clarification context
+# --------------------------------
+
 def add_clarification(
     question_context,
     clarification
 ):
-    """
-    Adds the user's clarification directly to the
-    existing question context.
 
-    IMPORTANT:
-    No generative AI rewrites user input here.
-    We preserve the user's actual words.
-    """
     return (
         question_context.strip()
         + " "
@@ -104,17 +103,15 @@ def add_clarification(
     )
 
 
-# --------------------------------------------------
-# Generative model
-# --------------------------------------------------
+# --------------------------------
+# Text generation
+# --------------------------------
 
-def generate_text(prompt, max_length=150):
-    """
-    Generates USER-FACING language.
+def generate_text(
+    prompt,
+    max_length=150
+):
 
-    This model is never used to determine the
-    semantic meaning sent to brain.py.
-    """
     inputs = response_tokenizer(
         prompt,
         return_tensors="pt",
@@ -127,116 +124,382 @@ def generate_text(prompt, max_length=150):
         do_sample=False
     )
 
-    generated_text = response_tokenizer.decode(
-        outputs[0],
-        skip_special_tokens=True
+    generated_text = (
+        response_tokenizer.decode(
+            outputs[0],
+            skip_special_tokens=True
+        )
     )
 
     return generated_text.strip()
 
 
-# --------------------------------------------------
-# FOUND
-# --------------------------------------------------
+# --------------------------------
+# Grounding helpers
+# --------------------------------
+
+def extract_concrete_values(text):
+
+    if not text:
+        return []
+
+    patterns = [
+        r"[$€£¥]\s*[\d,.]+",
+        r"\b\d+(?:\.\d+)?\s*%",
+        r"\b\d+(?:\.\d+)?\s+[A-Za-z]+"
+    ]
+
+    values = []
+
+    for pattern in patterns:
+
+        matches = re.findall(
+            pattern,
+            text
+        )
+
+        values.extend(
+            matches
+        )
+
+    return values
+
+
+def normalize_value(value):
+
+    return re.sub(
+        r"\s+",
+        "",
+        value
+    ).lower()
+
+
+# --------------------------------
+# Grounded answer builder
+# --------------------------------
+
+def build_grounded_fallback(
+    question,
+    brain_result
+):
+
+    candidate = brain_result.get(
+        "candidate",
+        ""
+    ).strip()
+
+    evidence = brain_result.get(
+        "evidence",
+        ""
+    ).strip()
+
+    values = extract_concrete_values(
+        evidence
+    )
+
+    if not values:
+
+        if evidence:
+            return evidence
+
+        return (
+            "I couldn't find enough "
+            "information to answer that."
+        )
+
+    value = values[0]
+
+    question_lower = (
+        question.lower()
+    )
+
+    evidence_lower = (
+        evidence.lower()
+    )
+
+    price_question = any(
+        phrase in question_lower
+        for phrase in [
+            "price",
+            "cost",
+            "how much"
+        ]
+    )
+
+    if candidate and price_question:
+
+        if "from" in evidence_lower:
+
+            return (
+                f"The {candidate} "
+                f"starts at {value}."
+            )
+
+        return (
+            f"The {candidate} "
+            f"costs {value}."
+        )
+
+    if candidate:
+
+        return (
+            f"{candidate}: {value}"
+        )
+
+    return value
+
+
+# --------------------------------
+# Candidate wording
+# --------------------------------
+
+def get_shared_candidate_prefix(
+    candidates
+):
+
+    names = [
+        candidate.get(
+            "name",
+            ""
+        ).strip()
+        for candidate in candidates
+        if candidate.get(
+            "name",
+            ""
+        ).strip()
+    ]
+
+    if len(names) < 2:
+        return None
+
+    token_lists = [
+        re.findall(
+            r"[A-Za-z0-9]+",
+            name
+        )
+        for name in names
+    ]
+
+    if not token_lists:
+        return None
+
+    shortest_length = min(
+        len(tokens)
+        for tokens in token_lists
+    )
+
+    shared_tokens = []
+
+    for index in range(
+        shortest_length
+    ):
+
+        current_tokens = [
+            tokens[index]
+            for tokens in token_lists
+        ]
+
+        if len({
+            token.lower()
+            for token in current_tokens
+        }) == 1:
+
+            shared_tokens.append(
+                current_tokens[0]
+            )
+
+        else:
+            break
+
+    if not shared_tokens:
+        return None
+
+    prefix = " ".join(
+        shared_tokens
+    )
+
+    if len(prefix) < 2:
+        return None
+
+    return prefix
+
+
+# --------------------------------
+# Found response
+# --------------------------------
 
 def generate_found_response(
     question,
     brain_result
 ):
-    """
-    Generates the final user-facing answer from
-    evidence found by brain.py.
-    """
-    evidence = brain_result["evidence"]
 
-    prompt = f"""
-Answer the user's question using only the website evidence.
-
-User question:
-{question}
-
-Website evidence:
-{evidence}
-
-Give a direct, natural answer.
-Do not mention similarity scores.
-Do not mention the brain or scraper.
-Do not invent information.
-"""
-
-    return generate_text(prompt)
+    return build_grounded_fallback(
+        question,
+        brain_result
+    )
 
 
-# --------------------------------------------------
-# NEEDS CLARIFICATION
-# --------------------------------------------------
+# --------------------------------
+# Clarification response
+# --------------------------------
 
 def generate_clarification(
     question,
     brain_result
 ):
-    """
-    Generates a natural clarification question.
 
-    The model should determine WHAT information is
-    missing rather than listing raw website evidence.
-    """
-    reason = brain_result.get(
-        "reason",
-        "The request is ambiguous."
+    candidates = brain_result.get(
+        "candidates",
+        []
     )
 
-    prompt = f"""
-The user asked:
+    if not candidates:
 
-{question}
+        prompt = """
+Write one short question asking the user
+to provide more specific information.
 
-The website search determined that the request is ambiguous.
-
-Reason:
-{reason}
-
-Ask ONE short and natural question that would clarify
-what the user means.
-
-For example, if they ask for the price of a product but
-there are several versions of that product, ask which
-version they mean.
-
-Do not answer the original question.
-Do not list website evidence.
-Do not make up product names.
-Keep the question short.
+Output only the question.
 """
 
-    return generate_text(
+        return generate_text(
+            prompt,
+            max_length=30
+        )
+
+    shared_prefix = (
+        get_shared_candidate_prefix(
+            candidates
+        )
+    )
+
+    if shared_prefix:
+
+        prompt = f"""
+Write one short conversational question.
+
+The user must choose a more specific
+option related to:
+
+{shared_prefix}
+
+Ask what specific {shared_prefix}
+option they are interested in.
+
+Do not provide an answer.
+Do not recommend anything.
+Output only the question.
+"""
+
+    else:
+
+        prompt = """
+Write one short conversational question
+asking the user which specific option
+they are interested in.
+
+Do not provide an answer.
+Do not recommend anything.
+Output only the question.
+"""
+
+    generated = generate_text(
         prompt,
-        max_length=50
+        max_length=30
+    )
+
+    if (
+        generated
+        and generated.endswith("?")
+    ):
+        return generated
+
+    if shared_prefix:
+
+        return (
+            f"Which {shared_prefix} option "
+            f"are you interested in?"
+        )
+
+    return (
+        "Which specific option "
+        "are you interested in?"
     )
 
 
-# --------------------------------------------------
-# NOT FOUND
-# --------------------------------------------------
+# --------------------------------
+# Not-found response
+# --------------------------------
 
-def generate_not_found_response(question):
-    """
-    Generates a natural response when brain.py
-    cannot find sufficient evidence.
-    """
-    prompt = f"""
-The user asked:
+def generate_not_found_response(
+    question
+):
 
-{question}
+    prompt = """
+Write one short conversational response.
 
-The website search could not find sufficient reliable
-information to answer the question.
+The requested information could not
+be found on the website.
 
-Respond naturally and briefly.
-Do not invent an answer.
+Do not guess.
+Do not invent information.
+Do not include numbers.
+Output only the response.
 """
 
-    return generate_text(
+    generated = generate_text(
         prompt,
-        max_length=60
+        max_length=30
+    )
+
+    if (
+        generated
+        and not extract_concrete_values(
+            generated
+        )
+    ):
+        return generated
+
+    return (
+        "I couldn't find that "
+        "information on the website."
+    )
+
+
+# --------------------------------
+# Follow-up response
+# --------------------------------
+
+def generate_follow_up():
+
+    prompt = """
+Write one short friendly question asking
+whether the user would like help with
+anything else.
+
+Do not mention any product.
+Do not mention any website.
+Do not include factual information.
+Do not include numbers.
+
+Output only the question.
+"""
+
+    generated = generate_text(
+        prompt,
+        max_length=25
+    )
+
+    if (
+        generated
+        and generated.endswith("?")
+        and not extract_concrete_values(
+            generated
+        )
+    ):
+        return generated
+
+    return (
+        "Is there anything else "
+        "you'd like help with?"
     )
