@@ -20,7 +20,7 @@ embedding_model = SentenceTransformer(
 
 LINK_THRESHOLD = 0.40
 MAX_PAGES = 10
-
+CLARIFICATION_THRESHOLD = 0.90
 
 # --------------------------------------------------
 # Link scoring
@@ -161,6 +161,42 @@ def contains_answer_value(text):
             return True
 
     return False
+
+
+# --------------------------------------------------
+# Detect standalone answer values
+# --------------------------------------------------
+
+def is_standalone_answer_value(text):
+    """
+    Detects when a link is essentially just one
+    concrete value rather than promotional text.
+
+    This lets a strongly relevant page return a
+    single direct answer without requiring a
+    repeated candidate-card pattern.
+    """
+
+    clean_text = re.sub(
+        r"\s+",
+        " ",
+        text
+    ).strip()
+
+    patterns = [
+        r"[$€£¥]\s*[\d,.]+",
+        r"\d+(?:\.\d+)?\s*%",
+        r"\d+(?:\.\d+)?\s+[A-Za-z]+"
+    ]
+
+    return any(
+        re.fullmatch(
+            pattern,
+            clean_text,
+            re.IGNORECASE
+        )
+        for pattern in patterns
+    )
 
 
 # --------------------------------------------------
@@ -320,9 +356,6 @@ def find_candidate_group(
     answer_links = get_answer_links(
         scored_links
     )
-
-    if len(answer_links) < 2:
-        return []
 
     best_group = []
 
@@ -545,6 +578,26 @@ def match_candidate(
             f"({score:.3f})"
         )
 
+    if (
+            best_score
+            < CLARIFICATION_THRESHOLD
+    ):
+        print(
+            "\nClarification did not "
+            "match current candidates."
+        )
+
+        return {
+            "status":
+                "no_candidate_match",
+
+            "clarification":
+                clarification,
+
+            "similarity":
+                best_score
+        }
+
     print(
         "\nSelected candidate:"
     )
@@ -659,9 +712,53 @@ def search_website(
         # Look for candidate group
         # --------------------------------
 
-        candidates = find_candidate_group(
+        answer_links = get_answer_links(
             scored_links
         )
+
+        page_relevance = (
+            -negative_score
+        )
+
+        if (
+            len(answer_links) == 1
+            and
+            page_relevance >= 0.70
+            and
+            is_standalone_answer_value(
+                answer_links[0]["text"]
+            )
+        ):
+
+            single_link = answer_links[0]
+
+            candidates = [{
+                "name":
+                    clean_candidate_name(
+                        single_link["text"]
+                    ),
+
+                "text":
+                    single_link["text"],
+
+                "evidence":
+                    single_link["text"],
+
+                "url":
+                    single_link["url"],
+
+                "source_url":
+                    current_url,
+
+                "similarity":
+                    page_relevance
+            }]
+
+        else:
+
+            candidates = find_candidate_group(
+                scored_links
+            )
 
 
         # --------------------------------

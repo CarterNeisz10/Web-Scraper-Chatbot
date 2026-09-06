@@ -226,6 +226,12 @@ def build_grounded_fallback(
         ]
     )
 
+    if (
+            candidate
+            and candidate == value
+    ):
+        return value
+
     if candidate and price_question:
 
         if "from" in evidence_lower:
@@ -347,25 +353,10 @@ def generate_clarification(
     question,
     brain_result
 ):
-
     candidates = brain_result.get(
         "candidates",
         []
     )
-
-    if not candidates:
-
-        prompt = """
-Write one short question asking the user
-to provide more specific information.
-
-Output only the question.
-"""
-
-        return generate_text(
-            prompt,
-            max_length=30
-        )
 
     shared_prefix = (
         get_shared_candidate_prefix(
@@ -375,55 +366,40 @@ Output only the question.
 
     if shared_prefix:
 
-        prompt = f"""
-Write one short conversational question.
+        question_words = {
+            word.lower()
+            for word in re.findall(
+                r"[A-Za-z0-9]+",
+                question
+            )
+        }
 
-The user must choose a more specific
-option related to:
-
-{shared_prefix}
-
-Ask what specific {shared_prefix}
-option they are interested in.
-
-Do not provide an answer.
-Do not recommend anything.
-Output only the question.
-"""
-
-    else:
-
-        prompt = """
-Write one short conversational question
-asking the user which specific option
-they are interested in.
-
-Do not provide an answer.
-Do not recommend anything.
-Output only the question.
-"""
-
-    generated = generate_text(
-        prompt,
-        max_length=30
-    )
-
-    if (
-        generated
-        and generated.endswith("?")
-    ):
-        return generated
-
-    if shared_prefix:
-
-        return (
-            f"Which {shared_prefix} option "
-            f"are you interested in?"
+        prefix_words = re.findall(
+            r"[A-Za-z0-9]+",
+            shared_prefix
         )
 
+        supported_words = [
+            word
+            for word in prefix_words
+            if word.lower()
+            in question_words
+        ]
+
+        if supported_words:
+
+            subject = " ".join(
+                supported_words
+            )
+
+            return (
+                f"Which {subject} option "
+                f"are you interested in?"
+            )
+
     return (
-        "Which specific option "
-        "are you interested in?"
+        "Which option are you "
+        "interested in?"
     )
 
 
@@ -434,34 +410,8 @@ Output only the question.
 def generate_not_found_response(
     question
 ):
-
-    prompt = """
-Write one short conversational response.
-
-The requested information could not
-be found on the website.
-
-Do not guess.
-Do not invent information.
-Do not include numbers.
-Output only the response.
-"""
-
-    generated = generate_text(
-        prompt,
-        max_length=30
-    )
-
-    if (
-        generated
-        and not extract_concrete_values(
-            generated
-        )
-    ):
-        return generated
-
     return (
-        "I couldn't find that "
+        "Sorry, I couldn't find that "
         "information on the website."
     )
 
@@ -471,34 +421,6 @@ Output only the response.
 # --------------------------------
 
 def generate_follow_up():
-
-    prompt = """
-Write one short friendly question asking
-whether the user would like help with
-anything else.
-
-Do not mention any product.
-Do not mention any website.
-Do not include factual information.
-Do not include numbers.
-
-Output only the question.
-"""
-
-    generated = generate_text(
-        prompt,
-        max_length=25
-    )
-
-    if (
-        generated
-        and generated.endswith("?")
-        and not extract_concrete_values(
-            generated
-        )
-    ):
-        return generated
-
     return (
         "Is there anything else "
         "you'd like help with?"
