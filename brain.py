@@ -1,6 +1,7 @@
 import heapq
 import re
 
+from urllib.parse import urlparse
 from sentence_transformers import SentenceTransformer, util
 from scraper import scrape_website
 
@@ -624,13 +625,140 @@ def match_candidate(
     }
 
 
+def is_specific_destination(
+    question,
+    navigation_text,
+    url
+):
+    """
+    Checks whether the page we navigated to appears
+    to represent a specific entity from the question.
+
+    Uses both the link text and URL path so truncated
+    link labels can still be recognized.
+    """
+
+    ignored_words = {
+        "what",
+        "is",
+        "the",
+        "price",
+        "of",
+        "a",
+        "an",
+        "how",
+        "much",
+        "does",
+        "do",
+        "cost",
+        "costs"
+    }
+
+    question_words = {
+        word.lower()
+        for word in re.findall(
+            r"[A-Za-z0-9]+",
+            question
+        )
+        if word.lower()
+        not in ignored_words
+    }
+
+    navigation_words = re.findall(
+        r"[A-Za-z0-9]+",
+        navigation_text
+    )
+
+    path = urlparse(
+        url
+    ).path
+
+    path_words = re.findall(
+        r"[A-Za-z0-9]+",
+        path
+    )
+
+    destination_words = {
+        word.lower()
+        for word in (
+            navigation_words
+            + path_words
+        )
+        if word.lower()
+        not in ignored_words
+    }
+
+    matched_words = (
+        question_words.intersection(
+            destination_words
+        )
+    )
+
+    return len(matched_words) >= 2
+
+
+def get_dominant_page_currency_value(
+    text
+):
+    """
+    Returns a currency value when one value clearly
+    appears more often than the others on the page.
+    """
+
+    if not text:
+        return None
+
+    values = re.findall(
+        r"[$€£¥]\s*[\d,.]+",
+        text
+    )
+
+    if not values:
+        return None
+
+    value_counts = {}
+
+    for value in values:
+
+        value_counts[value] = (
+            value_counts.get(
+                value,
+                0
+            )
+            + 1
+        )
+
+    ranked_values = sorted(
+        value_counts.items(),
+        key=lambda item:
+            item[1],
+        reverse=True
+    )
+
+    best_value, best_count = (
+        ranked_values[0]
+    )
+
+    if len(ranked_values) == 1:
+        return best_value
+
+    second_count = (
+        ranked_values[1][1]
+    )
+
+    if best_count > second_count:
+        return best_value
+
+    return None
+
 # --------------------------------------------------
 # Main website search
 # --------------------------------------------------
 
 def search_website(
     starting_url,
-    question_embedding
+    question_embedding,
+    question
 ):
 
     visited_urls = set()
@@ -640,7 +768,8 @@ def search_website(
         pages_to_visit,
         (
             -1.0,
-            starting_url
+            starting_url,
+            ""
         )
     )
 
@@ -653,10 +782,12 @@ def search_website(
         pages_visited < MAX_PAGES
     ):
 
-        negative_score, current_url = (
-            heapq.heappop(
-                pages_to_visit
-            )
+        (
+            negative_score,
+            current_url,
+            navigation_text
+        ) = heapq.heappop(
+            pages_to_visit
         )
 
         if current_url in visited_urls:
@@ -795,9 +926,6 @@ def search_website(
                     f"{candidate['evidence']}"
                 )
 
-            # STOP. We do not add any more links
-            # to the queue and do not crawl again.
-
             if len(candidates) == 1:
 
                 candidate = candidates[0]
@@ -845,6 +973,86 @@ def search_website(
             >= LINK_THRESHOLD
         ]
 
+
+        # --------------------------------
+        # Page-text fallback
+        # --------------------------------
+
+        price_question = any(
+            phrase in question.lower()
+            for phrase in [
+                "price",
+                "cost",
+                "how much"
+            ]
+        )
+
+        if (
+            not candidates
+            and
+            not relevant_links
+            and
+            navigation_text
+            and
+            price_question
+            and
+            is_specific_destination(
+                question,
+                navigation_text,
+                current_url
+            )
+        ):
+
+            page_value = (
+                get_dominant_page_currency_value(
+                    page["text"]
+                )
+            )
+
+            if page_value:
+
+                print(
+                    "\n=============================="
+                )
+
+                print(
+                    "ANSWER CANDIDATES FOUND"
+                )
+
+                print(
+                    "STOPPING WEBSITE SEARCH"
+                )
+
+                print(
+                    "=============================="
+                )
+
+                print(
+                    f"\n{page_value}"
+                )
+
+                print(
+                    f"  Evidence: {page_value}"
+                )
+
+                return {
+                    "status":
+                        "found",
+
+                    "candidate":
+                        page_value,
+
+                    "evidence":
+                        page_value,
+
+                    "source_url":
+                        current_url,
+
+                    "similarity":
+                        page_relevance
+                }
+
+
         print(
             "\nNo answer candidates."
         )
@@ -881,6 +1089,10 @@ def search_website(
 
                         link[
                             "url"
+                        ],
+
+                        link[
+                            "text"
                         ]
                     )
                 )

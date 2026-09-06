@@ -157,10 +157,10 @@ def send_message():
                 current_url,
 
                 new_request[
-
                     "question_embedding"
+                ],
 
-                ]
+                new_question
 
             )
 
@@ -258,7 +258,8 @@ def send_message():
 
     result = search_website(
         request["url"],
-        request["question_embedding"]
+        request["question_embedding"],
+        current_question
     )
 
 
