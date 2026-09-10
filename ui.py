@@ -3,6 +3,7 @@ import tkinter as tk
 from response import (
     process_request,
     generate_found_response,
+    generate_text_found_response,
     generate_clarification,
     generate_not_found_response,
     generate_follow_up
@@ -181,6 +182,23 @@ def send_message():
                 )
 
 
+            elif result["status"] == "found_text":
+
+                answer = generate_text_found_response(
+
+                    current_question,
+
+                    result
+
+                )
+
+                finish_request(
+
+                    answer
+
+                )
+
+
             elif (
 
                     result["status"]
@@ -270,6 +288,22 @@ def send_message():
     if result["status"] == "found":
 
         answer = generate_found_response(
+            current_question,
+            result
+        )
+
+        finish_request(
+            answer
+        )
+
+
+    # --------------------------------
+    # Text answer found
+    # --------------------------------
+
+    elif result["status"] == "found_text":
+
+        answer = generate_text_found_response(
             current_question,
             result
         )

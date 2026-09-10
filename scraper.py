@@ -49,20 +49,3 @@ def scrape_website(url):
     except requests.RequestException as error:
         print(f"Error scraping website: {error}")
         return None
-
-
-if __name__ == "__main__":
-    url = input("Enter website URL: ")
-
-    page = scrape_website(url)
-
-    if page:
-        print("\n--- TITLE ---")
-        print(page["title"])
-
-        print("\n--- WEBSITE INFORMATION ---")
-        print(page["text"])
-
-        print("\n--- LINKS ---")
-        for link in page["links"]:
-            print(f'{link["text"]} -> {link["url"]}')

@@ -87,20 +87,7 @@ def process_request(user_input):
     }
 
 
-# --------------------------------
-# Clarification context
-# --------------------------------
 
-def add_clarification(
-    question_context,
-    clarification
-):
-
-    return (
-        question_context.strip()
-        + " "
-        + clarification.strip()
-    )
 
 
 # --------------------------------
@@ -165,13 +152,6 @@ def extract_concrete_values(text):
     return values
 
 
-def normalize_value(value):
-
-    return re.sub(
-        r"\s+",
-        "",
-        value
-    ).lower()
 
 
 # --------------------------------
@@ -343,6 +323,53 @@ def generate_found_response(
         question,
         brain_result
     )
+
+# --------------------------------
+# Text-based found response
+# --------------------------------
+
+def generate_text_found_response(
+    question,
+    brain_result
+):
+
+    evidence = brain_result.get(
+        "evidence",
+        ""
+    ).strip()
+
+    if not evidence:
+
+        return (
+            "I couldn't find enough "
+            "information to answer that."
+        )
+
+    prompt = (
+        "Answer the question using only "
+        "the website evidence below. "
+        "Do not use outside knowledge. "
+        "If the evidence does not contain "
+        "the answer, say that the answer "
+        "was not found in the evidence.\n\n"
+        f"Question: {question}\n\n"
+        f"Website evidence: {evidence}\n\n"
+        "Answer:"
+    )
+
+    answer = generate_text(
+        prompt,
+        max_length=120
+    )
+
+    if not answer:
+
+        return (
+            "I couldn't find enough "
+            "information to answer that."
+        )
+
+    return answer
 
 
 # --------------------------------

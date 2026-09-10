@@ -164,6 +164,19 @@ def contains_answer_value(text):
     return False
 
 
+def contains_price_value(text):
+    """
+    Detects concrete currency values.
+    """
+
+    return bool(
+        re.search(
+            r"[$€£¥]\s*[\d,.]+",
+            text
+        )
+    )
+
+
 # --------------------------------------------------
 # Detect standalone answer values
 # --------------------------------------------------
@@ -304,23 +317,40 @@ def structure_similarity(
 # Find answer-bearing links
 # --------------------------------------------------
 
-def get_answer_links(scored_links):
+def get_answer_links(
+    scored_links,
+    price_question=False
+):
     """
-    Gets every link containing concrete answer-like
+    Gets links containing concrete answer-like
     information.
 
-    IMPORTANT:
-
-    There is NO semantic candidate threshold here.
+    Price questions require currency evidence so
+    model numbers and other numeric labels are not
+    mistaken for price answers.
     """
 
     answer_links = []
 
     for link in scored_links:
 
-        if contains_answer_value(
-            link["text"]
-        ):
+        if price_question:
+
+            has_answer_value = (
+                contains_price_value(
+                    link["text"]
+                )
+            )
+
+        else:
+
+            has_answer_value = (
+                contains_answer_value(
+                    link["text"]
+                )
+            )
+
+        if has_answer_value:
 
             candidate = dict(link)
 
@@ -342,7 +372,8 @@ def get_answer_links(scored_links):
 # --------------------------------------------------
 
 def find_candidate_group(
-    scored_links
+    scored_links,
+    price_question=False
 ):
     """
     Finds the largest group of answer-bearing links
@@ -355,7 +386,8 @@ def find_candidate_group(
     """
 
     answer_links = get_answer_links(
-        scored_links
+        scored_links,
+        price_question
     )
 
     best_group = []
@@ -409,10 +441,6 @@ def find_candidate_group(
                 clean_candidate_name(
                     link["text"]
                 ),
-
-            "text":
-                link["text"],
-
             "evidence":
                 link["text"],
 
@@ -632,7 +660,7 @@ def is_specific_destination(
 ):
     """
     Checks whether the page we navigated to appears
-    to represent a specific entity from the question.
+    to represent a specific subject from the question.
 
     Uses both the link text and URL path so truncated
     link labels can still be recognized.
@@ -640,18 +668,41 @@ def is_specific_destination(
 
     ignored_words = {
         "what",
+        "which",
+        "who",
+        "where",
+        "when",
+        "why",
+        "how",
         "is",
+        "are",
+        "was",
+        "were",
         "the",
-        "price",
-        "of",
         "a",
         "an",
-        "how",
-        "much",
+        "of",
+        "for",
+        "to",
         "does",
         "do",
+        "did",
+        "can",
+        "could",
+        "would",
+        "tell",
+        "me",
+        "about",
+        "offer",
+        "offers",
+        "offered",
+        "provide",
+        "provides",
+        "provided",
+        "price",
         "cost",
-        "costs"
+        "costs",
+        "much"
     }
 
     question_words = {
@@ -843,8 +894,18 @@ def search_website(
         # Look for candidate group
         # --------------------------------
 
+        price_question = any(
+            phrase in question.lower()
+            for phrase in [
+                "price",
+                "cost",
+                "how much"
+            ]
+        )
+
         answer_links = get_answer_links(
-            scored_links
+            scored_links,
+            price_question
         )
 
         page_relevance = (
@@ -885,10 +946,15 @@ def search_website(
                     page_relevance
             }]
 
+
         else:
 
             candidates = find_candidate_group(
-                scored_links
+
+                scored_links,
+
+                price_question
+
             )
 
 
@@ -951,13 +1017,7 @@ def search_website(
                 "status":
                     "needs_clarification",
 
-                "reason":
-                    "multiple_answer_candidates",
-
                 "candidates":
-                    candidates,
-
-                "options":
                     candidates
             }
 
@@ -978,14 +1038,7 @@ def search_website(
         # Page-text fallback
         # --------------------------------
 
-        price_question = any(
-            phrase in question.lower()
-            for phrase in [
-                "price",
-                "cost",
-                "how much"
-            ]
-        )
+
 
         if (
             not candidates
@@ -1044,6 +1097,61 @@ def search_website(
 
                     "evidence":
                         page_value,
+
+                    "source_url":
+                        current_url,
+
+                    "similarity":
+                        page_relevance
+                }
+        # --------------------------------
+        # General page-text fallback
+        # --------------------------------
+
+        if (
+                not candidates
+                and
+                not relevant_links
+                and
+                navigation_text
+                and
+                not price_question
+                and
+                is_specific_destination(
+                    question,
+                    navigation_text,
+                    current_url
+                )
+        ):
+
+            page_text = page.get(
+                "text",
+                ""
+            ).strip()
+
+            if page_text:
+                print(
+                    "\n=============================="
+                )
+
+                print(
+                    "TEXT EVIDENCE FOUND"
+                )
+
+                print(
+                    "STOPPING WEBSITE SEARCH"
+                )
+
+                print(
+                    "=============================="
+                )
+
+                return {
+                    "status":
+                        "found_text",
+
+                    "evidence":
+                        page_text,
 
                     "source_url":
                         current_url,
