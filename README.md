@@ -1,4 +1,4 @@
-# Website Assistant
+# Web Scraper Chatbot
 
 A Python-based website assistant that answers natural-language questions by semantically navigating websites, extracting relevant evidence, and generating grounded responses.
 
@@ -6,7 +6,7 @@ Rather than relying on predefined navigation paths or site-specific rules, the a
  
 ## Demo
 
-![Website Assistant Demo](assets/demo.gif)
+![Web Scraper Chatbot Demo](assets/demo.gif)
 
 Example queries:
 
@@ -26,7 +26,7 @@ What services does Prairie Sky View offer? https://www.prairieskyview.ca
 
 ## Overview
 
-Website Assistant is a local desktop application designed to retrieve answers from unfamiliar websites using natural-language questions.
+Web Scraper Chatbot is a local desktop application designed to retrieve answers from unfamiliar websites using natural-language questions.
 
 The system accepts a question and website URL, scrapes the website's visible content and links, and uses semantic similarity to determine which navigation paths are most relevant to the question. Relevant pages are explored using a priority queue until answer evidence is discovered or the configured search limit is reached.
 
@@ -252,7 +252,7 @@ Keeping these responsibilities separate reduces the risk of treating a semantica
 
 ## Limitations
 
-Website Assistant is an experimental retrieval system and is not intended to successfully process every website.
+Web Scraper Chatbot is an experimental retrieval system and is not intended to successfully process every website.
 
 Current limitations include:
 
