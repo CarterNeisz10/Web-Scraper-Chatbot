@@ -1,25 +1,50 @@
+"""
+Web scraping utilities for the website assistant.
+
+This module retrieves webpages, parses their HTML content, extracts
+visible text and page metadata, and collects links for use by the
+website search system.
+"""
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 
 def scrape_website(url):
-    # Add https:// if the user didn't include it
+    """
+    Scrapes the HTML content and links from a webpage.
+
+    Retrieves the webpage at the provided URL, parses its HTML, extracts
+    the page title and hyperlinks, removes script and style elements, and
+    returns the remaining visible text for use by the search system.
+
+    Args:
+        url: The URL of the webpage to scrape.
+
+    Returns:
+        A dictionary containing the page URL, title, visible text, and
+        hyperlinks. Returns None if the webpage cannot be retrieved.
+    """
+
+    # Add HTTPS when the user provides a URL without a protocol.
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
     try:
-        # Get the webpage
+        # Retrieve the webpage and reject unsuccessful HTTP responses.
         response = requests.get(url, timeout=10)
         response.raise_for_status()
 
-        # Parse the HTML
+        # Parse the returned HTML into a searchable document structure.
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Get the page title
-        title = soup.title.string.strip() if soup.title and soup.title.string else ""
+        title = (
+            soup.title.string.strip()
+            if soup.title and soup.title.string
+            else ""
+        )
 
-        # Find all links on the page
+        # Extract hyperlinks before modifying the parsed HTML.
         links = []
 
         for link in soup.find_all("a", href=True):
@@ -31,14 +56,12 @@ def scrape_website(url):
                 "url": link_url
             })
 
-        # Remove code that isn't useful website information
+        # Remove non-content elements before extracting visible page text.
         for element in soup(["script", "style"]):
             element.decompose()
 
-        # Extract visible text
         text = soup.get_text(separator=" ", strip=True)
 
-        # Return everything the brain may need
         return {
             "url": url,
             "title": title,
