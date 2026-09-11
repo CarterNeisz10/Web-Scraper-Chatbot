@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d8c352ea-4630-4d4d-bb2d-5e2d4f072a43" name="Changes" comment="refactor: clean up and document codebase&#10;&#10;- Remove unused and dead code across project files&#10;- Standardize Python formatting and reduce unnecessary line breaks&#10;- Add module and function docstrings throughout the codebase&#10;- Add inline comments for key search and response logic&#10;- Improve documentation for semantic navigation and candidate matching&#10;- Preserve existing search, clarification, and response behavior">
+      <change afterPath="$PROJECT_DIR$/.idea/Customer Service Chatbot.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.venv/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.venv/requirements.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/demo.gif" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;CarterNeisz10&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/CarterNeisz10/Customer-Service-Chatbot.git&quot;,
+    &quot;accountId&quot;: &quot;946840d9-42b5-4005-9970-bf51f7385a23&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
+  <component name="ProjectId" id="3Imlrj6QLXSX80XQ7idqhZOcaV9" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.Main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.brain.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ui.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/assets" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-PY-251.25410.122" />
+        <option value="bundled-python-sdk-880ecab49056-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.25410.122" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d8c352ea-4630-4d4d-bb2d-5e2d4f072a43" name="Changes" comment="" />
+      <created>1788377825473</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1788377825473</updated>
+      <workItem from="1788377826512" duration="5481000" />
+      <workItem from="1788469029320" duration="6279000" />
+      <workItem from="1788540895697" duration="3927000" />
+      <workItem from="1788556967901" duration="1609000" />
+      <workItem from="1788558598447" duration="3001000" />
+      <workItem from="1788664883568" duration="12367000" />
+      <workItem from="1788759733918" duration="634000" />
+      <workItem from="1789023236944" duration="5959000" />
+      <workItem from="1789089715474" duration="5611000" />
+    </task>
+    <task id="LOCAL-00001" summary="feat: add initial web scraper&#10;&#10;- Add blank Main.py entry point&#10;- Accept a website URL as input&#10;- Extract page text and links&#10;- Remove unnecessary scripts, styles, and whitespace&#10;- Handle request errors">
+      <option name="closed" value="true" />
+      <created>1788386911938</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1788386911938</updated>
+    </task>
+    <task id="LOCAL-00002" summary="feat: add website search and AI response system&#10;&#10;- Add question understanding using AI embeddings&#10;- Search through website pages to find relevant information&#10;- Choose useful links and avoid revisiting pages&#10;- Add found, needs clarification, and not found results&#10;- Ask follow-up questions when more information is needed&#10;- Generate natural responses using a Hugging Face model&#10;- Connect the scraper, search, and response systems">
+      <option name="closed" value="true" />
+      <created>1788475404952</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1788475404952</updated>
+    </task>
+    <task id="LOCAL-00003" summary="feat: improve answer candidate handling&#10;&#10;- Find possible answers from relevant website links&#10;- Group similar answer options and filter out unrelated links&#10;- Stop searching once answer candidates are found&#10;- Keep all found candidates for follow-up questions&#10;- Match user clarification to the correct candidate&#10;- Use the selected candidate to generate the final answer&#10;- Improve handling of questions with multiple possible answers">
+      <option name="closed" value="true" />
+      <created>1788561592210</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1788561592210</updated>
+    </task>
+    <task id="LOCAL-00004" summary="feat: add chatbot UI and improve response handling&#10;&#10;- Add a simple chat interface for asking website questions&#10;- Support multiple questions in the same session&#10;- Add grounded responses using website evidence&#10;- Add follow-up responses after completed requests&#10;- Improve detection of similar answer options&#10;- Improve handling of differently structured product links">
+      <option name="closed" value="true" />
+      <created>1788678400371</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1788678400371</updated>
+    </task>
+    <task id="LOCAL-00005" summary="feat: improve clarification and answer handling&#10;&#10;- Reject weak clarification matches&#10;- Re-search using added clarification when needed&#10;- Support single grounded answers on relevant pages&#10;- Improve handling of broad product questions&#10;- Improve clarification, not-found, and follow-up responses&#10;- Preserve conversation state across multiple questions">
+      <option name="closed" value="true" />
+      <created>1788681840708</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1788681840708</updated>
+    </task>
+    <task id="LOCAL-00006" summary="feat: improve page answer handling&#10;&#10;- Find answers directly from page content&#10;- Use navigation context to avoid incorrect answers&#10;- Keep searching when relevant links are available&#10;- Improve support for different website layouts">
+      <option name="closed" value="true" />
+      <created>1788684337954</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1788684337954</updated>
+    </task>
+    <task id="LOCAL-00007" summary="feat: add support for non-price answers&#10;&#10;- Find general answers directly from page text&#10;- Detect when navigation reaches a relevant destination page&#10;- Generate grounded responses using scraped website evidence">
+      <option name="closed" value="true" />
+      <created>1789028783446</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1789028783446</updated>
+    </task>
+    <task id="LOCAL-00008" summary="refactor: clean up and document codebase&#10;&#10;- Remove unused and dead code across project files&#10;- Standardize Python formatting and reduce unnecessary line breaks&#10;- Add module and function docstrings throughout the codebase&#10;- Add inline comments for key search and response logic&#10;- Improve documentation for semantic navigation and candidate matching&#10;- Preserve existing search, clarification, and response behavior">
+      <option name="closed" value="true" />
+      <created>1789092023792</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1789092023792</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="feat: add initial web scraper&#10;&#10;- Add blank Main.py entry point&#10;- Accept a website URL as input&#10;- Extract page text and links&#10;- Remove unnecessary scripts, styles, and whitespace&#10;- Handle request errors" />
+    <MESSAGE value="feat: add website search and AI response system&#10;&#10;- Add question understanding using AI embeddings&#10;- Search through website pages to find relevant information&#10;- Choose useful links and avoid revisiting pages&#10;- Add found, needs clarification, and not found results&#10;- Ask follow-up questions when more information is needed&#10;- Generate natural responses using a Hugging Face model&#10;- Connect the scraper, search, and response systems" />
+    <MESSAGE value="feat: improve answer candidate handling&#10;&#10;- Find possible answers from relevant website links&#10;- Group similar answer options and filter out unrelated links&#10;- Stop searching once answer candidates are found&#10;- Keep all found candidates for follow-up questions&#10;- Match user clarification to the correct candidate&#10;- Use the selected candidate to generate the final answer&#10;- Improve handling of questions with multiple possible answers" />
+    <MESSAGE value="feat: add chatbot UI and improve response handling&#10;&#10;- Add a simple chat interface for asking website questions&#10;- Support multiple questions in the same session&#10;- Add grounded responses using website evidence&#10;- Add follow-up responses after completed requests&#10;- Improve detection of similar answer options&#10;- Improve handling of differently structured product links" />
+    <MESSAGE value="feat: improve clarification and answer handling&#10;&#10;- Reject weak clarification matches&#10;- Re-search using added clarification when needed&#10;- Support single grounded answers on relevant pages&#10;- Improve handling of broad product questions&#10;- Improve clarification, not-found, and follow-up responses&#10;- Preserve conversation state across multiple questions" />
+    <MESSAGE value="feat: improve page answer handling&#10;&#10;- Find answers directly from page content&#10;- Use navigation context to avoid incorrect answers&#10;- Keep searching when relevant links are available&#10;- Improve support for different website layouts" />
+    <MESSAGE value="feat: add support for non-price answers&#10;&#10;- Find general answers directly from page text&#10;- Detect when navigation reaches a relevant destination page&#10;- Generate grounded responses using scraped website evidence" />
+    <MESSAGE value="refactor: clean up and document codebase&#10;&#10;- Remove unused and dead code across project files&#10;- Standardize Python formatting and reduce unnecessary line breaks&#10;- Add module and function docstrings throughout the codebase&#10;- Add inline comments for key search and response logic&#10;- Improve documentation for semantic navigation and candidate matching&#10;- Preserve existing search, clarification, and response behavior" />
+    <option name="LAST_COMMIT_MESSAGE" value="refactor: clean up and document codebase&#10;&#10;- Remove unused and dead code across project files&#10;- Standardize Python formatting and reduce unnecessary line breaks&#10;- Add module and function docstrings throughout the codebase&#10;- Add inline comments for key search and response logic&#10;- Improve documentation for semantic navigation and candidate matching&#10;- Preserve existing search, clarification, and response behavior" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Customer_Service_Chatbot$Main.coverage" NAME="Main Coverage Results" MODIFIED="1788545783255" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/PythonProject$brain.coverage" NAME="brain Coverage Results" MODIFIED="1788679586373" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Customer_Service_Chatbot$brain.coverage" NAME="brain Coverage Results" MODIFIED="1788473772084" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/PythonProject$Main.coverage" NAME="Main Coverage Results" MODIFIED="1788665911385" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/PythonProject$ui.coverage" NAME="ui Coverage Results" MODIFIED="1789095101059" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>
